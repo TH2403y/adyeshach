@@ -80,15 +80,11 @@ abstract class DefaultHuman(entityTypes: EntityTypes) : DefaultEntityLiving(enti
                 }
                 // 更新状态
                 submit(delay = 5) {
-                    if (isDie) {
-                        die(viewer = viewer)
-                    }
-                    if (isSleepingLegacy) {
-                        setSleeping(true)
-                    }
-                    if (isHideFromTabList) {
-                        removePlayerInfo(viewer)
-                    }
+                    if (isDie) die(viewer = viewer)
+                    if (isSleepingLegacy) setSleeping(true)
+                }
+                submit(delay = 10) {
+                    if (isHideFromTabList) removePlayerInfo(viewer)
                 }
                 spawned = true
             }
