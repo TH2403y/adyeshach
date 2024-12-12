@@ -15,6 +15,7 @@ import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import taboolib.common.LifeCycle
 import taboolib.common.platform.Awake
+import taboolib.common.platform.function.warning
 import taboolib.common.util.unsafeLazy
 
 
@@ -30,16 +31,18 @@ internal interface DefaultModelEngine : ModelEngine {
 
     override fun showModelEngine(viewer: Player): Boolean {
         if (isModelEngineHooked) {
-            // 初始化模型
-            if (modelEngineName.isNotBlank() && modelEngineUniqueId == null) {
-                refreshModelEngine()
-            }
+            return refreshModelEngine()
         }
-        return true
+        return false
     }
 
     override fun hideModelEngine(viewer: Player): Boolean {
-        return true
+        if (isModelEngineHooked) {
+            this as DefaultEntityInstance
+            ModelEngineAPI.getModeledEntity(normalizeUniqueId)?.destroy()
+            return true
+        }
+        return false
     }
 
     override fun refreshModelEngine(): Boolean {
@@ -49,10 +52,22 @@ internal interface DefaultModelEngine : ModelEngine {
             // 创建模型
             if (modelEngineName.isNotBlank()) {
                 modelEngineUniqueId = normalizeUniqueId
+                // 获取配置
+                val options = modelEngineOptions ?: ModelEngineOptions()
+                // 创建模型对象
+                val activeModel = try {
+                    ModelEngineAPI.createActiveModel(modelEngineName, null) {
+                        if (options.useStateMachine) StateMachineHandler(it) else PriorityHandler(it)
+                    }
+                } catch (ex: RuntimeException) {
+                    // 没找到模型
+                    warning("Cannot find model: $modelEngineName")
+                    return false
+                }
 
+                // 销毁当前绑定的模型
                 ModelEngineAPI.getModeledEntity(normalizeUniqueId)?.destroy()
-
-                // 先销毁原版实体，再创建模型
+                // 销毁原版实体
                 despawn()
 
                 // 创建代理实体
@@ -64,18 +79,12 @@ internal interface DefaultModelEngine : ModelEngine {
                 model.setSaved(true)
                 model.isBaseEntityVisible = false
 
-                // 私有模型兼容
+                // 私有模型
                 if (!isPublic()) {
                     entity.isDetectingPlayers = false
                     forViewers { t -> entity.setForceViewing(t, true) }
                 }
 
-                // 获取配置
-                val options = modelEngineOptions ?: ModelEngineOptions()
-                // 没有模型
-                val activeModel = ModelEngineAPI.createActiveModel(modelEngineName, null) {
-                    if (options.useStateMachine) StateMachineHandler(it) else PriorityHandler(it)
-                }
                 // 应用配置
                 options.apply(activeModel)
                 // 添加模型
@@ -85,10 +94,10 @@ internal interface DefaultModelEngine : ModelEngine {
                 updateModelEngineNameTag()
             }
             // 销毁模型
-            else {
-                ModelEngineAPI.getModeledEntity(normalizeUniqueId)?.destroy()
+            else if (ModelEngineAPI.getModeledEntity(normalizeUniqueId)?.destroy() != null) {
                 respawn()
             }
+            return true
         }
         return false
     }
