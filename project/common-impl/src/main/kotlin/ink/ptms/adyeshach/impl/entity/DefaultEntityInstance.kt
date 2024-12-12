@@ -175,6 +175,9 @@ abstract class DefaultEntityInstance(entityType: EntityTypes = EntityTypes.ZOMBI
             }
         }
 
+    /** ModelEngine 配置 */
+    var modelEngineOptions: ModelEngineOptions? = null
+
     /** 骑乘者 */
     @Expose
     var passengers = CopyOnWriteArraySet<String>()
