@@ -9,6 +9,7 @@ import ink.ptms.adyeshach.core.Adyeshach
 import ink.ptms.adyeshach.core.AdyeshachEntityTypeRegistry
 import ink.ptms.adyeshach.core.entity.EntityTypes
 import ink.ptms.adyeshach.core.entity.ModelEngine
+import ink.ptms.adyeshach.core.entity.ModelEngineOptions
 import ink.ptms.adyeshach.impl.entity.DefaultEntityInstance
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
@@ -62,37 +63,23 @@ internal interface DefaultModelEngine : ModelEngine {
                 val model = ModelEngineAPI.getOrCreateModeledEntity(normalizeUniqueId) { entity }
                 model.setSaved(true)
                 model.isBaseEntityVisible = false
+
                 // 私有模型兼容
                 if (!isPublic()) {
                     entity.isDetectingPlayers = false
                     forViewers { t -> entity.setForceViewing(t, true) }
                 }
 
+                // 获取配置
+                val options = modelEngineOptions ?: ModelEngineOptions()
                 // 没有模型
-                val useStateMachine = true
                 val activeModel = ModelEngineAPI.createActiveModel(modelEngineName, null) {
-                    if (useStateMachine) StateMachineHandler(it) else PriorityHandler(it)
+                    if (options.useStateMachine) StateMachineHandler(it) else PriorityHandler(it)
                 }
-
-                val scale = 1.0
-                val hitboxScale = 1.0
-                val doDamageTint = true
-                val lockPitch = false
-                val lockYaw = false
-                val initRenderer = true
-                val showHitbox = true
-                val showShadow = true
-                val hitbox = true
-
-                activeModel.setScale(scale)
-                activeModel.setHitboxScale(hitboxScale)
-                activeModel.setCanHurt(doDamageTint)
-                activeModel.isLockPitch = lockPitch
-                activeModel.isLockYaw = lockYaw
-                activeModel.setAutoRendererInitialization(initRenderer)
-                activeModel.isHitboxVisible = showHitbox
-                activeModel.isShadowVisible = showShadow
-                model.addModel(activeModel, hitbox)
+                // 应用配置
+                options.apply(activeModel)
+                // 添加模型
+                model.addModel(activeModel, options.isOverrideHitbox)
 
                 // 更新名称
                 updateModelEngineNameTag()
