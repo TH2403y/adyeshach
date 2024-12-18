@@ -76,7 +76,6 @@ internal interface DefaultModelEngine : ModelEngine {
 
                 // 创建模型
                 val model = ModelEngineAPI.getOrCreateModeledEntity(normalizeUniqueId) { entity }
-                model.setSaved(true)
                 model.isBaseEntityVisible = false
 
                 // 私有模型
