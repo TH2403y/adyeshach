@@ -331,6 +331,7 @@ abstract class DefaultEntityInstance(entityType: EntityTypes = EntityTypes.ZOMBI
             if (DefaultAdyeshachAPI.localEventBus.callSpawn(this, viewer)) {
                 spawn.run()
             }
+            DefaultAdyeshachAPI.localEventBus.postSpawn(this, viewer)
             // 更新单位属性
             updateEntityMetadata(viewer)
             // 更新单位视角
@@ -347,6 +348,7 @@ abstract class DefaultEntityInstance(entityType: EntityTypes = EntityTypes.ZOMBI
             // 使用事件系统控制实体销毁
             if (DefaultAdyeshachAPI.localEventBus.callDestroy(this, viewer)) {
                 destroy.run()
+                DefaultAdyeshachAPI.localEventBus.postDestroy(this, viewer)
             }
             return true
         }

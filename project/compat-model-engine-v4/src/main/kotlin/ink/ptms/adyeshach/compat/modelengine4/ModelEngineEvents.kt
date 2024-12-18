@@ -20,11 +20,11 @@ internal object ModelEngineEvents {
     fun init() {
         if (isModelEngineHooked) {
             // 实体生成
-            Adyeshach.api().getEventBus().prepareSpawn { e ->
+            Adyeshach.api().getEventBus().postSpawn { e ->
                 (e.entity as ModelEngine).showModelEngine(e.viewer)
             }
             // 实体销毁
-            Adyeshach.api().getEventBus().prepareDestroy { e ->
+            Adyeshach.api().getEventBus().postDestroy { e ->
                 (e.entity as ModelEngine).hideModelEngine(e.viewer)
             }
             // 名称变动

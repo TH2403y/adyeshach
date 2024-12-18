@@ -2,20 +2,16 @@ package ink.ptms.adyeshach.compat.modelengine4
 
 import com.ticxo.modelengine.api.ModelEngineAPI
 import com.ticxo.modelengine.api.model.bone.BoneBehaviorTypes
-import com.ticxo.modelengine.core.animation.handler.PriorityHandler
-import com.ticxo.modelengine.core.animation.handler.StateMachineHandler
 import com.ticxo.modelengine.v1_20_R3.NMSHandler_v1_20_R3
 import ink.ptms.adyeshach.core.Adyeshach
 import ink.ptms.adyeshach.core.AdyeshachEntityTypeRegistry
 import ink.ptms.adyeshach.core.entity.EntityTypes
 import ink.ptms.adyeshach.core.entity.ModelEngine
-import ink.ptms.adyeshach.core.entity.ModelEngineOptions
 import ink.ptms.adyeshach.impl.entity.DefaultEntityInstance
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import taboolib.common.LifeCycle
 import taboolib.common.platform.Awake
-import taboolib.common.platform.function.warning
 import taboolib.common.util.unsafeLazy
 
 
@@ -30,16 +26,21 @@ import taboolib.common.util.unsafeLazy
 internal interface DefaultModelEngine : ModelEngine {
 
     override fun showModelEngine(viewer: Player): Boolean {
-        if (isModelEngineHooked) {
-            return refreshModelEngine()
+        if (isModelEngineHooked && modelEngineName.isNotBlank()) {
+            // 初始化模型
+            if (modelEngineUniqueId == null) {
+                createModel()
+            } else {
+                getDummy()?.setForceViewing(viewer, true)
+            }
+            return true
         }
         return false
     }
 
     override fun hideModelEngine(viewer: Player): Boolean {
-        if (isModelEngineHooked) {
-            this as DefaultEntityInstance
-            ModelEngineAPI.getModeledEntity(normalizeUniqueId)?.destroy()
+        if (isModelEngineHooked && modelEngineName.isNotBlank() && modelEngineUniqueId != null) {
+            getDummy()?.setForceViewing(viewer, false)
             return true
         }
         return false
@@ -48,54 +49,14 @@ internal interface DefaultModelEngine : ModelEngine {
     override fun refreshModelEngine(): Boolean {
         if (isModelEngineHooked) {
             this as DefaultEntityInstance
-
             // 创建模型
             if (modelEngineName.isNotBlank()) {
+                // 初始化模型
                 modelEngineUniqueId = normalizeUniqueId
-                if (visibleDistance > 32.0) visibleDistance = 32.0
-
-                // 获取配置
-                val options = modelEngineOptions ?: ModelEngineOptions()
-                // 创建模型对象
-                val activeModel = try {
-                    ModelEngineAPI.createActiveModel(modelEngineName, null) {
-                        if (options.useStateMachine) StateMachineHandler(it) else PriorityHandler(it)
-                    }
-                } catch (ex: RuntimeException) {
-                    // 没找到模型
-                    warning("Cannot find model: $modelEngineName")
-                    return false
-                }
-
-                // 销毁当前绑定的模型
-                ModelEngineAPI.getModeledEntity(normalizeUniqueId)?.destroy()
-                // 销毁原版实体
-                despawn()
-
-                // 创建代理实体
-                val entity = EntityModeled(this)
-                entity.syncLocation(getLocation())
-
-                // 创建模型
-                val model = ModelEngineAPI.getOrCreateModeledEntity(normalizeUniqueId) { entity }
-                model.isBaseEntityVisible = false
-
-                // 私有模型
-                if (!isPublic()) {
-                    entity.isDetectingPlayers = false
-                    forViewers { t -> entity.setForceViewing(t, true) }
-                }
-
-                // 应用配置
-                options.apply(activeModel)
-                // 添加模型
-                model.addModel(activeModel, options.isOverrideHitbox)
-
-                // 更新名称
-                updateModelEngineNameTag()
+                createModel()
             }
             // 销毁模型
-            else if (ModelEngineAPI.getModeledEntity(normalizeUniqueId)?.destroy() != null) {
+            else if (ModelEngineAPI.removeModeledEntity(normalizeUniqueId) != null) {
                 respawn()
             }
             return true
@@ -105,8 +66,7 @@ internal interface DefaultModelEngine : ModelEngine {
 
     override fun updateModelEngineNameTag() {
         this as DefaultEntityInstance
-        val modeledEntity = ModelEngineAPI.getModeledEntity(modelEngineUniqueId ?: return) ?: return
-        modeledEntity.models.values.forEach { model ->
+        getModeledEntity()?.models?.values?.forEach { model ->
             model.getBone("nametag").flatMap { it.getBoneBehavior(BoneBehaviorTypes.NAMETAG) }.ifPresent { nameTag ->
                 // 名称可见
                 if (isCustomNameVisible()) {

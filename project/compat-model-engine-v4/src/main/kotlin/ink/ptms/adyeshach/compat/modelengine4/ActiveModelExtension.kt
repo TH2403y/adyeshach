@@ -5,8 +5,12 @@ import com.ticxo.modelengine.api.animation.BlueprintAnimation
 import com.ticxo.modelengine.api.animation.handler.IStateMachineHandler
 import com.ticxo.modelengine.api.model.ActiveModel
 import com.ticxo.modelengine.api.model.ModeledEntity
+import com.ticxo.modelengine.core.animation.handler.PriorityHandler
+import com.ticxo.modelengine.core.animation.handler.StateMachineHandler
+import ink.ptms.adyeshach.core.entity.EntityInstance
 import ink.ptms.adyeshach.core.entity.ModelEngine
 import ink.ptms.adyeshach.core.entity.ModelEngineOptions
+import taboolib.common.platform.function.warning
 import taboolib.common.util.orNull
 
 /**
@@ -122,4 +126,43 @@ fun ModelEngine.stopAnimation(
     } else {
         handler.stopAnimation(animationId)
     }
+}
+
+internal fun ModelEngine.createModel() {
+    // 获取配置
+    val options = modelEngineOptions ?: ModelEngineOptions()
+    // 创建模型对象
+    val activeModel = try {
+        ModelEngineAPI.createActiveModel(modelEngineName, null) {
+            if (options.useStateMachine) StateMachineHandler(it) else PriorityHandler(it)
+        }
+    } catch (ex: RuntimeException) {
+        // 没找到模型
+        warning("Cannot find model: $modelEngineName")
+        return
+    }
+    // 创建代理实体
+    val entity = EntityModeled(this as EntityInstance)
+    setTag("ModelEngine:EntityModeled", entity)
+    entity.isDetectingPlayers = false
+    entity.syncLocation(getLocation())
+    // 销毁原版实体
+    despawn()
+    // 创建模型
+    ModelEngineAPI.createModeledEntity(entity) { model ->
+        model.isBaseEntityVisible = false
+        // 设置是否强制显示
+        forViewers { t -> entity.setForceViewing(t, true) }
+        // 应用配置
+        options.apply(activeModel)
+        // 添加模型
+        model.addModel(activeModel, options.isOverrideHitbox)
+    }
+    // 更新名称
+    updateModelEngineNameTag()
+}
+
+internal fun ModelEngine.getDummy(): EntityModeled? {
+    this as EntityInstance
+    return getTag("ModelEngine:EntityModeled")!! as? EntityModeled
 }
