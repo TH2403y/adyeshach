@@ -52,6 +52,8 @@ internal interface DefaultModelEngine : ModelEngine {
             // 创建模型
             if (modelEngineName.isNotBlank()) {
                 modelEngineUniqueId = normalizeUniqueId
+                if (visibleDistance > 32.0) visibleDistance = 32.0
+
                 // 获取配置
                 val options = modelEngineOptions ?: ModelEngineOptions()
                 // 创建模型对象
