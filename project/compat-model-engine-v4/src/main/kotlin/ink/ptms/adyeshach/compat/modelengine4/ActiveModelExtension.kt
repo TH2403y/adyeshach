@@ -144,8 +144,9 @@ internal fun ModelEngine.createModel() {
     // 创建代理实体
     val entity = EntityModeled(this as EntityInstance)
     setTag("ModelEngine:EntityModeled", entity)
-    entity.isDetectingPlayers = false
     entity.syncLocation(getLocation())
+    entity.isDetectingPlayers = false
+    entity.bodyRotationController.yBodyRot = entity.location.yaw
     // 销毁原版实体
     despawn()
     // 创建模型
