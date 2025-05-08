@@ -25,7 +25,7 @@ subprojects {
     }
     repositories {
         mavenLocal()
-        maven { url = uri("https://repo.spongepowered.org/maven") }
+        maven { url = uri("http://sacredcraft.cn:8081/repository/releases") }
         mavenCentral()
     }
     dependencies {
